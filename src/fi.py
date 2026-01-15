@@ -7,7 +7,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder
 
 
-df=pd.read_csv('synthetic_dataset_V2_10000.csv')
+df=pd.read_csv('balanced.csv')
 
 TARGET_COLS = ['Assigned Department', 'Priority', 'Sentiment', 'Action Type']
 label_encoders = {}
@@ -32,7 +32,7 @@ model_1_pipeline = Pipeline([
 model_1_pipeline.fit(X_train, Y1_train)
 
 
-### pipeline 2 
+### MOdel pipeline 2 
 
 Y2 = df['Action Type_Encoded']
 
@@ -48,7 +48,7 @@ model_2_pipeline.fit(X_train_act, Y2_train)
 
 
 
-# --- Agent 3: Resolution Recommendation (Similarity-Based) ---
+# --- Model 3: Resolution Recommendation (Similarity-Based) ---
 from sklearn.neighbors import NearestNeighbors
 
 # For this agent, we will model Resolution_Steps based on the Customer Query
@@ -81,7 +81,7 @@ def resolution_recommender(query, n=3):
     return recommendations
 
 
-# --- Agent 4: Resolution Time Estimation (Regression) ---
+# --- Model 4: Resolution Time Estimation (Regression) ---
 from sklearn.linear_model import LinearRegression
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler
@@ -121,9 +121,4 @@ def time_estimator(dept_enc, priority_enc, sentiment_enc, complexity):
     return max(0, predicted_time)
 
 
-SLA_POLICY = {
-    'High': 240,
-    'Medium': 540,
-    'Low': 1024
-}
 
