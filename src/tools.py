@@ -1,20 +1,20 @@
 
 from crewai_tools import tool
-import fi
+import prediction
 
 
 @tool("TriageTool")
 def triage_tool(query: str):
     """Predicts Department, Priority, Sentiment and action type for a support query."""
     # This is where you call your existing model_1_pipeline and model_2_pipeline
-    prediction = fi.model_1_pipeline.predict([query])[0]
-    dept_prediction = fi.model_2_pipeline.predict([query])[0]
+    prediction = prediction.model_1_pipeline.predict([query])[0]
+    dept_prediction = prediction.model_2_pipeline.predict([query])[0]
 
     return {
-        "dept": fi.label_encoders['Assigned Department'].inverse_transform([prediction[0]])[0],
-        "priority": fi.label_encoders['Priority'].inverse_transform([prediction[1]])[0],
-        "sentiment" : fi.label_encoders['Sentiment'].inverse_transform([prediction[2]])[0],
-        "actiontype" : fi.label_encoders['Assigned Department'].inverse_transform([dept_prediction])[0]
+        "dept": prediction.label_encoders['Assigned Department'].inverse_transform([prediction[0]])[0],
+        "priority": prediction.label_encoders['Priority'].inverse_transform([prediction[1]])[0],
+        "sentiment" : prediction.label_encoders['Sentiment'].inverse_transform([prediction[2]])[0],
+        "actiontype" : prediction.label_encoders['Assigned Department'].inverse_transform([dept_prediction])[0]
     }
 
 
@@ -23,7 +23,7 @@ def triage_tool(query: str):
 def knowledge_base_tool(query: str):
     """Finds historical resolutions for similar customer issues."""
     # Call your resolution_recommender function here
-    return fi.resolution_recommender(query, n=3)
+    return prediction.resolution_recommender(query, n=3)
 
 
 
@@ -33,13 +33,13 @@ def knowledge_base_tool(query: str):
 def estimate_resolution_time(complexity_score: float, dept: str, priority: str,sentiment : str):
     """Predicts resolution time using a pre-trained Regression model."""
     # Convert labels back to encoded values as your model expects
-    dept_enc = fi.label_encoders['Assigned Department'].transform([dept])[0]
-    priority_enc = fi.label_encoders['Priority'].transform([priority])[0]
-    senti_enc = fi.label_encoders['Sentiment'].transform([sentiment])[0]
+    dept_enc = prediction.label_encoders['Assigned Department'].transform([dept])[0]
+    priority_enc = prediction.label_encoders['Priority'].transform([priority])[0]
+    senti_enc = prediction.label_encoders['Sentiment'].transform([sentiment])[0]
     
     # Run your existing Scikit-Learn regression model
     # prediction = fi.model_3_pipeline.predict([[complexity_score, priority_enc, dept_enc,senti_enc]])
-    mins = fi.time_estimator(dept_enc, priority_enc, senti_enc, complexity_score)
+    mins = prediction.time_estimator(dept_enc, priority_enc, senti_enc, complexity_score)
     f"The estimated resolution time is {mins:.2f} minutes."
 
 

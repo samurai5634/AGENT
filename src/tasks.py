@@ -39,6 +39,24 @@ triage_task = Task(
     agent=agent.triager
 )
 
+
+research_task = Task(
+    description=(
+        "Using the raw customer query: '{query}', search the historical database "
+        "using the KnowledgeBaseTool. You must identify the 3 most similar past cases. "
+        "Analyze the 'Resolution_Steps' from these cases to see if they can be applied "
+        "to the current situation. "
+        "\n\nFocus specifically on identifying technical commonalities—if past "
+        "similar queries resulted in an 'Escalation', note that for the Orchestrator."
+    ),
+    expected_output="""A technical briefing containing:
+    1. A list of 3 similar historical queries.
+    2. The exact resolution steps used in those cases.
+    3. A synthesized recommendation on how to solve the current query based on history.""",
+    agent=agent.researcher 
+    #  it helps the Orchestrator synthesize the final report.
+)
+
 override_task = Task(
     description=(
         "Review the outputs for query: '{query}'. "
@@ -55,6 +73,38 @@ override_task = Task(
     context=[triage_task,complexity_task] 
 )
 
+orchestrator_task = Task(
+    description="""
+    1. Look at the Summary from the Summary Agent.
+    2. Look at the ML Labels from the Triage Agent.
+    3. Look at the SLA Override and Final Action from the Time Agent.
+    4. Look at the Historical Fixes from the Knowledge Specialist.
+    
+    Synthesize all this into a ONE-PAGE report for the supervisor. 
+    Ensure the 'FINAL ACTION' is clearly highlighted based on the Overrider's decision.
 
+    Take this template into account : 
+    
+    "original_insights": {
+        "summary": "Short 10-word technical summary",
+        "initial_action": "Predicted by Model 1",
+        "priority": "High/Medium/Low"
+    },
+    "technical_analysis": {
+        "complexity_score": 8.5,
+        "base_prediction": "320.5 mins",
+        "adjusted_prediction": "384.6 mins (20% Complexity Buffer Applied)"
+    },
+    "final_decision": {
+        "action_type": "Escalate",  # The Altered Field
+        "sla_status": "CRITICAL BREACH RISK",
+        "routing_reason": "Complexity-induced delay exceeds 240m High-Priority SLA."
+    }
+
+    """,
+    expected_output="A professional ticket brief containing: Summary, Final Action, Routing Dept, and Suggested Fix.",
+    agent=agent.orchestrator_agent,
+    context=[summary_task, triage_task, override_task] 
+)
 
 

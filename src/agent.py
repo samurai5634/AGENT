@@ -1,4 +1,5 @@
-from crewai import Agent
+from crewai import Agent,LLM
+from ollamaset import local_llm
 import tools
 
 triager = Agent(
@@ -8,7 +9,7 @@ triager = Agent(
     backstory='You are an expert at identifying the core issue in customer messages.'
                 'You are well equipped with all the knowledge to predict appropriate action type',
     tools=[tools.triage_tool],
-    # llm=local_llm
+    llm=local_llm
 )
 
 
@@ -19,7 +20,7 @@ researcher = Agent(
     tools=[tools.knowledge_base_tool],
     memory = True,
     verbose = True,
-    # llm=local_llm
+    llm=local_llm
 )
 
 summary_specialist = Agent(
@@ -31,7 +32,7 @@ summary_specialist = Agent(
     problems at a glance.""",
     verbose=True,
     allow_delegation=False,
-    #llm=local_llm  # Using your Ollama instance
+    llm=local_llm  # Using your Ollama instance
 )
 
 complexity_analyst = Agent(
@@ -40,7 +41,7 @@ complexity_analyst = Agent(
     backstory="""You are a Senior Technical Lead. You evaluate how many resources 
     and how much expertise is needed to solve a ticket. You look for technical 
     keywords and the severity of the mentioned issue.""",
-    #llm=local_llm, # Using your Ollama instance
+    llm=local_llm, 
     verbose=True,
     reasoning=True # This makes the agent "think" before scoring
 )
@@ -57,10 +58,22 @@ time_agent = Agent(
     tools=[tools.overriding_tool, tools.estimate_resolution_time],
     verbose=True,
     allow_delegation=False,
-    memory=True
+    memory=True,
+    llm = local_llm
 )
 
 
+orchestrator_agent = Agent(
+    role='Customer Support Orchestrator',
+    goal='Synthesize multiple technical insights into a single clear routing decision.',
+    backstory="""You are the final decision-maker. You don't perform the 
+    technical analysis yourself, but you review the reports from the 
+    Triage Specialist, the Auditor, and the Policy Officer. Your job is 
+    to create a final, unified ticket brief that is ready for human action.""",
+    verbose=True,
+    allow_delegation=False,
+    llm = local_llm
+)
 
 
 
