@@ -7,7 +7,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder
 
 
-df=pd.read_csv('balanced.csv')
+df = pd.read_csv('../datasets/finaltraining_data.csv')
 
 TARGET_COLS = ['Assigned Department', 'Priority', 'Sentiment', 'Action Type']
 label_encoders = {}

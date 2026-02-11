@@ -25,10 +25,6 @@ def knowledge_base_tool(query: str):
     # Call your resolution_recommender function here
     return prediction.resolution_recommender(query, n=3)
 
-
-
-
-
 @tool("TimeEstimationTool")
 def estimate_resolution_time(complexity_score: float, dept: str, priority: str,sentiment : str):
     """Predicts resolution time using a pre-trained Regression model."""

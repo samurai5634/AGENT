@@ -1,4 +1,4 @@
-from crewai import Agent,LLM
+from crewai import Agent
 from ollamaset import local_llm
 import tools
 
