@@ -1,4 +1,4 @@
-from ollamasetgi import local_llm
+from ollamaset import local_llm
 from crewai import Agent, Task, Crew
 
 def test_ollama():
