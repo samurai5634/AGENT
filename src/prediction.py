@@ -114,8 +114,8 @@ from sklearn.metrics import classification_report, mean_absolute_error, r2_score
 
 # For Triage (Classification)
 y_pred = model_1_pipeline.predict(X_test)
-# print("Triage Accuracy :\n", accuracy_score(Y1_test, y_pred))
-# print(1 - hamming_loss(Y1_test, y_pred))
+print("Triage Accuracy :\n", accuracy_score(Y1_test, y_pred))
+print(1 - hamming_loss(Y1_test, y_pred))
 
 
 y2_pred = model_2_pipeline.predict(X_test_act)
