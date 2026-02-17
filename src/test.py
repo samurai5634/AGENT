@@ -1,5 +1,10 @@
-from ollamaset import local_llm
-from crewai import Agent, Task, Crew
+
+from crewai import Agent, Task, Crew,LLM
+
+llm1 = LLM(
+    model="ollama/llama3",
+    base_url="http://localhost:11434")
+
 
 def test_ollama():
     print("--- Testing Connection to Ollama ---")
@@ -9,7 +14,7 @@ def test_ollama():
         role='System Tester',
         goal='Verify that you can communicate with the user.',
         backstory='You are a diagnostic tool testing a local LLM connection.',
-        llm=local_llm,
+        llm=llm1,
         verbose=True
     )
 
@@ -35,6 +40,7 @@ def test_ollama():
     except Exception as e:
         print(f"\n[ERROR] Could not connect to Ollama: {e}")
         print("Check if Ollama is running at http://localhost:11434")
+
 
 if __name__ == "__main__":
     test_ollama()

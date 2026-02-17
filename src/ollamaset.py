@@ -1,8 +1,10 @@
-from langchain_ollama import ChatOllama
+from crewai import LLM
 
 # Initialize the local LLM
-local_llm = ChatOllama(
-    model="llama3",
-    base_url="http://localhost:11434")
 
+# # Initialize the local embeddings
+# local_embeddings = OllamaEmbeddings(
+#     model="llama3",
+#     base_url="http://localhost:11434"
+# )
 
