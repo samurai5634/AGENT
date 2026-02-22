@@ -43,7 +43,7 @@ def estimate_resolution_time(complexity_score: float, dept: str, priority: str,s
 @tool("OverridingTool")
 def overriding_tool(mins: float, priority: str, action_type: str, complexity_score: float):
     """Analyzes the prediction against SLAs and applies overrides for Escalations or Follow-Ups."""
-    # If complexity is high, we assume 'Queue Friction'
+    # If complexity is high, we add 20 % buffer
     if complexity_score > 8.0:
         adjusted_time = mins * 1.2 
         
