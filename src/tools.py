@@ -1,5 +1,5 @@
 
-from crewai_tools import tool
+from crewai.tools import tool
 import prediction
 
 

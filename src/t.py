@@ -1,7 +1,7 @@
 from crewai import Agent, Task, Crew, LLM
 
 llm = LLM(
-    model="ollama/llama3",
+    model="ollama/llama3.2:latest",
     base_url="http://localhost:11434"
 )
 
@@ -15,6 +15,7 @@ agent = Agent(
 
 task = Task(
     description="Say hello",
+    expected_output="A friendly greeting.",
     agent=agent
 )
 

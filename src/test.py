@@ -2,7 +2,7 @@
 from crewai import Agent, Task, Crew,LLM
 
 llm1 = LLM(
-    model="ollama/llama3",
+    model="ollama/llama3.2:latest",
     base_url="http://localhost:11434")
 
 
