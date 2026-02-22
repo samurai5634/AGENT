@@ -30,7 +30,7 @@ X_train, X_test, Y1_train, Y1_test = train_test_split(X, Y1, test_size=0.2, rand
 
 model_1_pipeline = Pipeline([
     ('tfidf', TfidfVectorizer(stop_words='english', max_features=5000)),
-    ('clf', MultiOutputClassifier(LogisticRegression(solver='liblinear', random_state=42)))
+    ('clf', MultiOutputClassifier(LogisticRegression(solver='lbfgs', random_state=42)))
 ])
 
 model_1_pipeline.fit(X_train, Y1_train)
@@ -46,7 +46,7 @@ X_train_act, X_test_act, Y2_train, Y2_test = train_test_split(X, Y2, test_size=0
 
 model_2_pipeline = Pipeline([
     ('tfidf', TfidfVectorizer(stop_words='english', max_features=5000)),
-    ('clf', LogisticRegression(solver='liblinear', random_state=42))
+    ('clf', LogisticRegression(solver='lbfgs', random_state=42))
 ])
 
 model_2_pipeline.fit(X_train_act, Y2_train)
@@ -113,18 +113,18 @@ joblib.dump(model_3_pipeline, 'models/regre_model.pkl')
 from sklearn.metrics import classification_report, mean_absolute_error, r2_score,accuracy_score,hamming_loss
 
 # For Triage (Classification)
-y_pred = model_1_pipeline.predict(X_test)
-print("Triage Accuracy :\n", accuracy_score(Y1_test, y_pred))
-print(1 - hamming_loss(Y1_test, y_pred))
+# y_pred = model_1_pipeline.predict(X_test)
+# print("Triage Accuracy :\n", accuracy_score(Y1_test, y_pred))
+# print(1 - hamming_loss(Y1_test, y_pred))
 
 
-y2_pred = model_2_pipeline.predict(X_test_act)
-print("Action Report:\n", classification_report(Y2_test, y2_pred))
+# y2_pred = model_2_pipeline.predict(X_test_act)
+# print("Action Report:\n", classification_report(Y2_test, y2_pred))
 
-# For Timer (Regression)
-time_pred = model_3_pipeline.predict(X_test_reg)
-print(f"Mean Absolute Error: {mean_absolute_error(Y2_reg_test, time_pred)}")
-print(f"R2 Score (Variance explained): {r2_score(Y2_reg_test, time_pred)}")
+# # For Timer (Regression)
+# time_pred = model_3_pipeline.predict(X_test_reg)
+# print(f"Mean Absolute Error: {mean_absolute_error(Y2_reg_test, time_pred)}")
+# print(f"R2 Score (Variance explained): {r2_score(Y2_reg_test, time_pred)}")
 
 
 

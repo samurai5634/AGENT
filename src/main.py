@@ -4,7 +4,7 @@ from agent import (
     summary_specialist, triager, complexity_analyst, 
     researcher, time_agent, orchestrator_agent
 )
-from src.tasks import (
+from tasks import (
     summary_task, triage_task, complexity_task, 
     research_task, override_task,orchestrator_task
 )

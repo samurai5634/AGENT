@@ -4,7 +4,7 @@ ollama
 langchain-ollama==0.2.2
 pydantic
 pandas==2.2.3
-scipy==1.11.3
+scipy
 scikit-learn==1.6.0
 jupyter
 ipykernel
