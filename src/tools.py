@@ -43,7 +43,7 @@ def knowledge_base_tool(query: str,args_schema=KnowledgeInput):
 
 
 @tool("TimeEstimationTool")
-def estimate_resolution_time(complexity_score: float, dept: str, priority: str,sentiment : str,arg_schema = TimeEstimationInput):
+def estimate_resolution_time(complexity_score: float, dept: str, priority: str,sentiment : str,args_schema = TimeEstimationInput):
     """Predicts resolution time using a pre-trained Regression model."""
     # Convert labels back to encoded values as your model expects
     dept_enc = fi.encoders['Assigned Department'].transform([dept])[0]
@@ -75,7 +75,7 @@ def overriding_tool(mins: float, priority: str, action_type: str, complexity_sco
     # 2. Logic for SLA Breach (Escalation Override)
     if mins > limit:
         final_action = "Escalate"
-        override_reason = f"CRITICAL: Predicted time ({min:.1f}m) exceeds SLA ({limit}m)."
+        override_reason = f"CRITICAL: Predicted time ({mins:.1f}m) exceeds SLA ({limit}m)."
     
     # 3. Logic for Follow-Up Optimization (Complexity Override)
     elif action_type == "Follow-Up":
@@ -85,7 +85,7 @@ def overriding_tool(mins: float, priority: str, action_type: str, complexity_sco
             # We don't change the action here, but we flag it for the supervisor and update time restriction
         else:
             override_reason = "Standard Override Buffer"
-            adjusted_time = min + 60  ## add 60 mins buffer
+            adjusted_time = mins + 60  ## add 60 mins buffer
     
     else:
           final_action = action_type
