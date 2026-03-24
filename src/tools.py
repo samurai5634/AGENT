@@ -1,46 +1,63 @@
-
+from pydantic import BaseModel, Field
 from crewai.tools import tool
-import prediction
+from utils import fi 
+
+class TriageInput(BaseModel):
+    query: str = Field(description="The raw customer support query text to be classified.")
+
+class OverrideInput(BaseModel):
+    predicted_mins: float = Field(..., description="The base minutes predicted by the ML model.")
+    priority: str = Field(..., description="The priority level (High, Medium, Low).")
+    complexity_score: float = Field(..., description="The technical complexity score (1-10).")
+    original_action: str = Field(..., description="The initial action predicted by the ML model.")
+
+class KnowledgeInput(BaseModel):
+    query: str = Field(..., description="The raw query string used to find similar historical cases.")
+
+class TimeEstimationInput(BaseModel):
+    action_label: int = Field(..., description="The encoded integer value for the Action (from Model 1).")
+    dept_label: int = Field(..., description="The encoded integer value for the Department (from Model 2).")
+    complexity_score: float = Field(..., description="The complexity score (1-10) provided by the Auditor.")
 
 
 @tool("TriageTool")
-def triage_tool(query: str):
+def triage_tool(query: str,args_schema=TriageInput):
     """Predicts Department, Priority, Sentiment and action type for a support query."""
     # This is where you call your existing model_1_pipeline and model_2_pipeline
-    prediction = prediction.model_1_pipeline.predict([query])[0]
-    dept_prediction = prediction.model_2_pipeline.predict([query])[0]
-
+    prediction = fi.triage.predict([query])[0]
+    dept_prediction = fi.action.predict([query])[0]
     return {
-        "dept": prediction.label_encoders['Assigned Department'].inverse_transform([prediction[0]])[0],
-        "priority": prediction.label_encoders['Priority'].inverse_transform([prediction[1]])[0],
-        "sentiment" : prediction.label_encoders['Sentiment'].inverse_transform([prediction[2]])[0],
-        "actiontype" : prediction.label_encoders['Assigned Department'].inverse_transform([dept_prediction])[0]
+        "dept": fi.encoders['Assigned Department'].inverse_transform([prediction[0]])[0],
+        "priority": fi.encoders['Priority'].inverse_transform([prediction[1]])[0],
+        "sentiment" : fi.encoders['Sentiment'].inverse_transform([prediction[2]])[0],
+        "actiontype" : fi.encoders['Assigned Department'].inverse_transform([dept_prediction])[0]
     }
 
 
 
 @tool("KnowledgeBaseTool")
-def knowledge_base_tool(query: str):
+def knowledge_base_tool(query: str,args_schema=KnowledgeInput):
     """Finds historical resolutions for similar customer issues."""
     # Call your resolution_recommender function here
-    return prediction.resolution_recommender(query, n=3)
+    return fi.knn.resolution_recommender(query, n=3)
+
 
 @tool("TimeEstimationTool")
-def estimate_resolution_time(complexity_score: float, dept: str, priority: str,sentiment : str):
+def estimate_resolution_time(complexity_score: float, dept: str, priority: str,sentiment : str,args_schema = TimeEstimationInput):
     """Predicts resolution time using a pre-trained Regression model."""
     # Convert labels back to encoded values as your model expects
-    dept_enc = prediction.label_encoders['Assigned Department'].transform([dept])[0]
-    priority_enc = prediction.label_encoders['Priority'].transform([priority])[0]
-    senti_enc = prediction.label_encoders['Sentiment'].transform([sentiment])[0]
+    dept_enc = fi.encoders['Assigned Department'].transform([dept])[0]
+    priority_enc = fi.encoders['Priority'].transform([priority])[0]
+    senti_enc = fi.encoders['Sentiment'].transform([sentiment])[0]
     
     # Run your existing Scikit-Learn regression model
     # prediction = fi.model_3_pipeline.predict([[complexity_score, priority_enc, dept_enc,senti_enc]])
-    mins = prediction.time_estimator(dept_enc, priority_enc, senti_enc, complexity_score)
+    mins = fi.timer(dept_enc, priority_enc, senti_enc, complexity_score)
     f"The estimated resolution time is {mins:.2f} minutes."
 
 
 
-@tool("OverridingTool")
+@tool("OverridingTool",args_schema = OverrideInput)
 def overriding_tool(mins: float, priority: str, action_type: str, complexity_score: float):
     """Analyzes the prediction against SLAs and applies overrides for Escalations or Follow-Ups."""
     # If complexity is high, we add 20 % buffer
@@ -58,7 +75,7 @@ def overriding_tool(mins: float, priority: str, action_type: str, complexity_sco
     # 2. Logic for SLA Breach (Escalation Override)
     if mins > limit:
         final_action = "Escalate"
-        override_reason = f"CRITICAL: Predicted time ({min:.1f}m) exceeds SLA ({limit}m)."
+        override_reason = f"CRITICAL: Predicted time ({mins:.1f}m) exceeds SLA ({limit}m)."
     
     # 3. Logic for Follow-Up Optimization (Complexity Override)
     elif action_type == "Follow-Up":
@@ -68,7 +85,7 @@ def overriding_tool(mins: float, priority: str, action_type: str, complexity_sco
             # We don't change the action here, but we flag it for the supervisor and update time restriction
         else:
             override_reason = "Standard Override Buffer"
-            adjusted_time = min + 60  ## add 60 mins buffer
+            adjusted_time = mins + 60  ## add 60 mins buffer
     
     else:
           final_action = action_type

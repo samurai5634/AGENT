@@ -1,9 +1,12 @@
 
 from crewai import Agent, Task, Crew,LLM
+import os
+os.environ["LITELLM_LOGGING"] = "False"
 
 llm1 = LLM(
     model="ollama/llama3.2:latest",
-    base_url="http://localhost:11434")
+    base_url="http://localhost:11434",
+    )
 
 
 def test_ollama():
@@ -20,15 +23,18 @@ def test_ollama():
 
     # 2. Define a simple test task
     test_task = Task(
-        description="Say 'Hello Govind, your local Ollama connection is successful!' and tell me which model you are using.",
+        description="what are the best 5 places to visit in pune.",
         expected_output="A confirmation message.",
+        human_input=True,
         agent=tester
     )
 
     # 3. Create a mini crew
     test_crew = Crew(
         agents=[tester],
-        tasks=[test_task]
+        tasks=[test_task],
+        memory = True,
+        verbose = True
     )
 
     # 4. Kick it off
@@ -39,7 +45,7 @@ def test_ollama():
         print("--------------------")
     except Exception as e:
         print(f"\n[ERROR] Could not connect to Ollama: {e}")
-        print("Check if Ollama is running at http://localhost:11434")
+        print("Check if Ollama is running at http://localhostp:11434")
 
 
 if __name__ == "__main__":

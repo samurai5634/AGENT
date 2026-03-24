@@ -1,4 +1,4 @@
-
+from dotenv import load_dotenv
 from crewai import Crew, Process
 from agent import (
     summary_specialist, triager, complexity_analyst, 
@@ -8,6 +8,8 @@ from tasks import (
     summary_task, triage_task, complexity_task, 
     research_task, override_task,orchestrator_task
 )
+
+load_dotenv()
 
 def run_customer_support_system():
     # 1. Initialize the Crew
