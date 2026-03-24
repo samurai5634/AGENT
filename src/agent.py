@@ -77,7 +77,7 @@ orchestrator_agent = Agent(
     to create a final, unified ticket brief that is ready for human action.
     IMPORTANT: If the Overrider Agent has flagged an 'Override_status': Active, 
     you MUST use the 'final_action' from the OverridingTool as the 
-    official status of the ticket.
+    final status of the ticket.
     """,
     verbose=True,
     allow_delegation=False,
