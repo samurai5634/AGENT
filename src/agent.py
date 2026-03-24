@@ -70,10 +70,15 @@ time_agent = Agent(
 orchestrator_agent = Agent(
     role='Customer Support Orchestrator',
     goal='Synthesize multiple technical insights into a single clear routing decision.',
-    backstory="""You are the final decision-maker. You don't perform the 
+    backstory="""
+    You are the final decision-maker. You don't perform the 
     technical analysis yourself, but you review the reports from the 
     Triage Specialist, the Auditor, and the Policy Officer. Your job is 
-    to create a final, unified ticket brief that is ready for human action.""",
+    to create a final, unified ticket brief that is ready for human action.
+    IMPORTANT: If the Overrider Agent has flagged an 'Override_status': Active, 
+    you MUST use the 'final_action' from the OverridingTool as the 
+    final status of the ticket.
+    """,
     verbose=True,
     allow_delegation=False,
     llm = llm
