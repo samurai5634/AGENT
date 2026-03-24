@@ -21,7 +21,7 @@ class TimeEstimationInput(BaseModel):
 
 
 @tool("TriageTool")
-def triage_tool(query: str,args_schema=TriageInput):
+def triage_tool(query: str):
     """Predicts Department, Priority, Sentiment and action type for a support query."""
     # This is where you call your existing model_1_pipeline and model_2_pipeline
     prediction = fi.triage.predict([query])[0]
@@ -36,14 +36,14 @@ def triage_tool(query: str,args_schema=TriageInput):
 
 
 @tool("KnowledgeBaseTool")
-def knowledge_base_tool(query: str,args_schema=KnowledgeInput):
+def knowledge_base_tool(query: str):
     """Finds historical resolutions for similar customer issues."""
     # Call your resolution_recommender function here
     return fi.knn.resolution_recommender(query, n=3)
 
 
 @tool("TimeEstimationTool")
-def estimate_resolution_time(complexity_score: float, dept: str, priority: str,sentiment : str,args_schema = TimeEstimationInput):
+def estimate_resolution_time(complexity_score: float, dept: str, priority: str,sentiment : str):
     """Predicts resolution time using a pre-trained Regression model."""
     # Convert labels back to encoded values as your model expects
     dept_enc = fi.encoders['Assigned Department'].transform([dept])[0]
@@ -57,7 +57,7 @@ def estimate_resolution_time(complexity_score: float, dept: str, priority: str,s
 
 
 
-@tool("OverridingTool",args_schema = OverrideInput)
+@tool("OverridingTool")
 def overriding_tool(mins: float, priority: str, action_type: str, complexity_score: float):
     """Analyzes the prediction against SLAs and applies overrides for Escalations or Follow-Ups."""
     # If complexity is high, we assume 'Queue Friction'

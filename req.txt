@@ -1,11 +1,13 @@
 crewai
 crewai-tools
 ollama
-langchain-ollama==0.2.2
+langchain-ollama
 pydantic
-pandas==2.2.3
+pandas
 scipy
-scikit-learn==1.6.0
+scikit-learn
 jupyter
 ipykernel
 joblib
+fastapi
+litellm[proxy]
