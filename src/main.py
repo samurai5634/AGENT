@@ -14,8 +14,6 @@ load_dotenv()
 
  
 
-   
-
 def run_customer_support_system():
     # 1. Initialize the Crew
     # The order in 'tasks' defines the execution sequence

@@ -13,6 +13,10 @@ triager = Agent(
     backstory='You are an expert at identifying the core issue in customer messages.'
                 'You are well equipped with all the knowledge to predict appropriate action type',
     tools=[tools.triage_tool],
+    max_iter =10,
+    max_execution_time=300, # 5 minutes max per ticket
+    verbose=True,
+    memory=True,
     llm=llm
 )
 
@@ -24,6 +28,8 @@ researcher = Agent(
     tools=[tools.knowledge_base_tool],
     memory = True,
     verbose = True,
+    max_iter =10,
+    max_execution_time=300, # 5 minutes max per ticket
     llm=llm
 )
 
@@ -35,6 +41,9 @@ summary_specialist = Agent(
     of a support ticket. Your summaries are used by senior engineers to understand 
     problems at a glance.""",
     verbose=True,
+    max_iter =10,
+    max_execution_time=300, # 5 minutes max per ticket
+    memory=True,
     allow_delegation=False,
     llm=llm  # Using your Ollama instance
 )
@@ -45,9 +54,14 @@ complexity_analyst = Agent(
     backstory="""You are a Senior Technical Lead. You evaluate how many resources 
     and how much expertise is needed to solve a ticket. You look for technical 
     keywords and the severity of the mentioned issue.""",
-    llm=llm, 
+    llm=llm,
+    max_iter =10,
+    allows_delegation=False,
+    max_execution_time=300, # 5 minutes max per ticket
     verbose=True,
-    reasoning=True # This makes the agent "think" before scoring
+    memory=True,
+    reasoning=True, # This makes the agent "think" before scoring
+    max_reasoning_steps=10
 )
 
 time_agent = Agent(
@@ -63,7 +77,9 @@ time_agent = Agent(
     verbose=True,
     allow_delegation=False,
     memory=True,
-    llm = llm
+    llm = llm,
+    max_iter =10,
+    max_execution_time=300, # 5 minutes max per ticket
 )
 
 
@@ -81,7 +97,9 @@ orchestrator_agent = Agent(
     """,
     verbose=True,
     allow_delegation=False,
-    llm = llm
+    llm = llm,
+    max_iter =10,
+    max_execution_time=300, # 5 minutes max per ticket
 )
 
 
