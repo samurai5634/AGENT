@@ -110,23 +110,29 @@ joblib.dump(model_3_pipeline, 'models/regre_model.pkl')
 
 ### Evaluation
 
-from sklearn.metrics import classification_report, mean_absolute_error, r2_score,accuracy_score,hamming_loss
+from sklearn.metrics import accuracy_score, mean_absolute_error, classification_report
+import numpy as np
 
-# For Triage (Classification)
-# y_pred = model_1_pipeline.predict(X_test)
-# print("Triage Accuracy :\n", accuracy_score(Y1_test, y_pred))
-# print(1 - hamming_loss(Y1_test, y_pred))
+def evaluate_static_layer(y_true_dept, y_pred_dept, y_true_time, y_pred_time,y_true_act,y_pred_act):
+    # Classification Performance (Department/Priority)
+    
+    hamming_loss = np.mean(np.not_equal(y_true_dept, y_pred_dept))
+    accu = 1 - hamming_loss
 
+    accuracy = accuracy_score(y_true_act,y_pred_act)
+    # f1_scor = f1_score(y_true_act,y_pred_act,average='macro')
+    # Regression Performance (Resolution Time)
+    mae = mean_absolute_error(y_true_time, y_pred_time)
+    print("Accuracy of multiclass-multioutput(Triage) is ", + round(accu,3))
+    print("Accuracy of single classification (action) is ", + round(accuracy,3))
+    # print("F1_score of single classification (action) is ", + round(f1_scor,3))
+    print("classification report  (action) is \n ", classification_report(y_true_act,y_pred_act))
 
-# y2_pred = model_2_pipeline.predict(X_test_act)
-# print("Action Report:\n", classification_report(Y2_test, y2_pred))
+    print(f"Resolution Time MAE: {mae:.2f} minutes")
+    
+    return {"accuracy": accu, "mae": mae}
 
-# # For Timer (Regression)
-# time_pred = model_3_pipeline.predict(X_test_reg)
-# print(f"Mean Absolute Error: {mean_absolute_error(Y2_reg_test, time_pred)}")
-# print(f"R2 Score (Variance explained): {r2_score(Y2_reg_test, time_pred)}")
-
-
+evaluate_static_layer(Y1_test,model_1_pipeline.predict(X_test),Y2_reg_test,model_3_pipeline.predict(X_test_reg),Y2_test,model_2_pipeline.predict(X_test_act))
 
 
 #### Functions 
