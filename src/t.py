@@ -1,51 +1,84 @@
-from crewai import Agent, Task, Crew, Process
+import pandas as pd
+import json
+import re
+from crewai import Agent, Task, Crew, Process, LLM
 
-# 1. Define the Critic Agent
+llm = LLM(
+    model="ollama/llama3.2:latest",
+    base_url="http://localhost:11434"
+)
+
+# 1. SETUP THE JUDGE (LLM-as-a-Judge)
 critic_agent = Agent(
     role='System Quality Auditor',
-    goal='Ensure the hybrid support system provides faithful, accurate, and SLA-compliant resolutions.',
-    backstory="""You are an expert in Neuro-Symbolic AI evaluation. Your job is to audit 
-    the interaction between statistical ML outputs and LLM-generated solutions. 
-    You prevent hallucinations by ensuring every claim is grounded in the 
-    retrieved technical documentation.""",
-    verbose=True,
+    goal='Objectively score the faithfulness and relevance of support resolutions.',
+    backstory="""You are a senior auditor specialized in Neuro-Symbolic AI. 
+    You analyze if an AI's response is grounded in provided evidence (Symbolic) 
+    and addresses the user's intent (Neural).""",
+    verbose=False,
     allow_delegation=False,
-    memory=True
+    llm = llm
+
 )
 
-# 2. Define the Evaluation Task
-evaluation_task = Task(
-    description="""
-    Perform a multi-dimensional audit of the following ticket resolution:
+def get_audit_task(query, ml_pred, agent_res, context):
+    return Task(
+        description=f"""
+        AUDIT DATA:
+        - User Query: {query}
+        - ML Predicted Dept: {ml_pred}
+        - Agent Proposed Resolution: {agent_res}
+        - Retrieved Reference Context: {context}
+
+        EVALUATION STEPS:
+        1. Faithfulness: Is the agent resolution supported by the Reference Context? (Score 0-10)
+        2. Relevance: Does the resolution solve the User Query? (Score 0-10)
+        3. Compliance: Does the resolution align with the ML Predicted Dept? (Yes/No)
+        """,
+        expected_output="JSON with keys: 'faithfulness', 'relevance', 'compliance', 'reasoning'",
+        agent=critic_agent
+    )
+
+# 2. LOAD DATA
+df = pd.read_csv('datasets\ticket_test_dataset.csv')
+audit_results = []
+
+print(f"Starting audit for {len(df)} tickets...\n")
+
+# 3. EXECUTION LOOP (Iterate through dataset)
+# Note: For your project, you might start with a subset like df.head(20)
+for index, row in df.iterrows():
+    # Simulate the context retrieval (In live system, this comes from your KNN/VectorDB)
+    mock_context = f"Internal Knowledge Base: Related to {row['Assigned Department']} protocols."
     
-    1. **Faithfulness**: Is the solution derived ONLY from the retrieved context? 
-       Identify any information not present in the source documentation.
-    2. **Answer Relevance**: Does the solution directly address the user's query 
-       and the Priority ({priority}) assigned by the ML model?
-    3. **SLA Alignment**: Does the proposed resolution meet the predicted 
-       Resolution Time ({predicted_time})?
+    # Define the Task for this specific ticket
+    task = get_audit_task(
+        query=row['Customer Query'],
+        ml_pred=row['Assigned Department'], # ML Baseline
+        agent_res=row['Resolution_Steps'],    # Current Agent Output
+        context=mock_context
+    )
     
-    **Ticket Context**: {retrieved_context}
-    **Agent Resolution**: {agent_resolution}
-    """,
-    expected_output="""A structured evaluation report with a score (0-10) for Faithfulness, 
-    Relevance, and a final 'Pass/Fail' for the Neuro-Symbolic override.""",
-    agent=critic_agent
-)
+    crew = Crew(agents=[critic_agent], tasks=[task])
+    raw_output = crew.kickoff()
+    
+    # Parse scores from the LLM output (regex to find numbers)
+    f_score = re.search(r'faithfulness["\s:]+(\d+)', str(raw_output), re.I)
+    r_score = re.search(r'relevance["\s:]+(\d+)', str(raw_output), re.I)
+    
+    audit_results.append({
+        'Ticket ID': row['Ticket ID'],
+        'ML_Dept': row['Assigned Department'],
+        'Faithfulness': f_score.group(1) if f_score else "N/A",
+        'Relevance': r_score.group(1) if r_score else "N/A",
+        'Status': "PASS" if (f_score and int(f_score.group(1)) > 7) else "FAIL"
+    })
+    
+    print(f"Processed {row['Ticket ID']}: Status {audit_results[-1]['Status']}")
 
-# 3. Form the Crew
-quality_crew = Crew(
-    agents=[critic_agent],
-    tasks=[evaluation_task],
-    process=Process.sequential
-)
+# 4. SAVE AND DISPLAY TABLE
+audit_df = pd.DataFrame(audit_results)
+audit_df.to_csv('critic_audit_results.csv', index=False)
 
-# 4. Example Execution for a single ticket
-result = quality_crew.kickoff(inputs={
-    'priority': 'High',
-    'predicted_time': '45 mins',
-    'retrieved_context': 'Documentation: Server 404 errors are caused by DNS misconfiguration.',
-    'agent_resolution': 'The server is down because of a hardware failure. I recommend a full replacement.'
-})
-
-print(result)
+print("\n--- CRITIC AUDIT TABLE ---")
+print(audit_df.to_string(index=False))
