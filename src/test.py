@@ -33,7 +33,7 @@ def test_ollama():
     test_crew = Crew(
         agents=[tester],
         tasks=[test_task],
-        memory = True,
+        # memory = True,
         verbose = True
     )
 
@@ -45,7 +45,7 @@ def test_ollama():
         print("--------------------")
     except Exception as e:
         print(f"\n[ERROR] Could not connect to Ollama: {e}")
-        print("Check if Ollama is running at http://localhostp:11434")
+        print("Check if Ollama is running at http://localhost:11434")
 
 
 if __name__ == "__main__":

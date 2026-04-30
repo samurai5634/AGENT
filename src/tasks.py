@@ -16,7 +16,8 @@ complexity_task = Task(
     expected_output="A JSON object with a float score and a brief reason.",
     instructions = "Analyze the ticket and provide the final answer immediately. DO NOT attempt to refine the answer more than three times. If a tool returns an error, report the error as the final result.",
     agent=agent.complexity_analyst,
-    output_pydantic=ComplexOutput 
+    output_pydantic=ComplexOutput,
+    # callback=app.update_sidebar_callback
 )
 
 summary_task = Task(
@@ -27,7 +28,8 @@ summary_task = Task(
     ),
     instructions = "Analyze the ticket and provide the final answer immediately. DO NOT attempt to refine the answer more than three times. If a tool returns an error, report the error as the final result.",
     expected_output="A single sentence of 10-12 words that summarizes the technical problem.",
-    agent=agent.summary_specialist
+    agent=agent.summary_specialist,
+    # callback=app.update_sidebar_callback
 )
 
 triage_task = Task(
@@ -39,7 +41,8 @@ triage_task = Task(
     ),
     instructions = "Analyze the ticket and provide the final answer immediately. DO NOT attempt to refine the answer more than three times. If a tool returns an error, report the error as the final result.",
     expected_output="A structured record of Predicted Action, Priority, Sentiment, and Department.",
-    agent=agent.triager
+    agent=agent.triager,
+    # callback=app.update_sidebar_callback
 )
 
 
@@ -57,6 +60,7 @@ research_task = Task(
     2. The exact resolution steps used in those cases.
     3. A synthesized recommendation on how to solve the current query based on history.""",
     agent=agent.researcher,
+    # callback=app.update_sidebar_callback,
     instructions = "Analyze the ticket and provide the final answer immediately. DO NOT attempt to refine the answer more than three times. If a tool returns an error, report the error as the final result.",
     #  it helps the Orchestrator synthesize the final report.
 )
@@ -74,6 +78,7 @@ override_task = Task(
     ),
     expected_output="The final resolution time and the definitive 'Action Type', including the logic applied.",
     agent=agent.time_agent,
+    # callback=app.update_sidebar_callback,
     instuctions = "Analyze the ticket and provide the final answer immediately. DO NOT attempt to refine the answer more than three times. If a tool returns an error, report the error as the final result.",
     context=[triage_task,complexity_task] 
 )
@@ -110,7 +115,8 @@ orchestrator_task = Task(
     expected_output="A professional ticket brief containing: Summary, Final Action, Routing Dept, and Suggested Fix.",
     agent=agent.orchestrator_agent,
     instructions = "Analyze the ticket and provide the final answer immediately. DO NOT attempt to refine the answer more than three times. If a tool returns an error, report the error as the final result.",
-    context=[summary_task, triage_task, override_task] 
+    context=[summary_task, triage_task, override_task],
+    # callback=app.update_sidebar_callback 
 )
 
 

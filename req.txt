@@ -10,4 +10,5 @@ jupyter
 ipykernel
 joblib
 fastapi
+streamlit
 litellm[proxy]
