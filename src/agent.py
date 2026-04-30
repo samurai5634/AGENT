@@ -16,7 +16,7 @@ triager = Agent(
     max_iter =10,
     max_execution_time=300, # 5 minutes max per ticket
     verbose=True,
-    memory=True,
+    # memory=True,
     llm=llm
 )
 
@@ -26,7 +26,7 @@ researcher = Agent(
     goal='Find the best historical solution for the query',
     backstory='You have access to all past resolved tickets and technical docs.',
     tools=[tools.knowledge_base_tool],
-    memory = True,
+    # memory = True,
     verbose = True,
     max_iter =10,
     max_execution_time=300, # 5 minutes max per ticket
@@ -43,7 +43,7 @@ summary_specialist = Agent(
     verbose=True,
     max_iter =10,
     max_execution_time=300, # 5 minutes max per ticket
-    memory=True,
+    # memory=True,
     allow_delegation=False,
     llm=llm  # Using your Ollama instance
 )
@@ -59,8 +59,8 @@ complexity_analyst = Agent(
     allows_delegation=False,
     max_execution_time=300, # 5 minutes max per ticket
     verbose=True,
-    memory=True,
-    reasoning=True, # This makes the agent "think" before scoring
+    # memory=True,
+    # reasoning=True, # This makes the agent "think" before scoring
     max_reasoning_steps=10
 )
 
@@ -76,7 +76,7 @@ time_agent = Agent(
     tools=[tools.overriding_tool, tools.estimate_resolution_time],
     verbose=True,
     allow_delegation=False,
-    memory=True,
+    # memory=True,
     llm = llm,
     max_iter =10,
     max_execution_time=300, # 5 minutes max per ticket
