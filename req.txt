@@ -12,3 +12,4 @@ joblib
 fastapi
 streamlit
 litellm[proxy]
+chromadb
