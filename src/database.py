@@ -2,127 +2,104 @@ import sqlite3
 import chromadb
 from chromadb.utils import embedding_functions
 import pandas as pd
-import uuid
 
-# ==========================================
-# 1. INITIALIZE RELATIONAL ENGINE (SQLite)
-# ==========================================
-def init_relational_db():
-    """Establishes tables for real-time ticket tracking and SLA audits"""
+def init_ticket_db():
+    """Initializes a local relational database for live queue tracking."""
     conn = sqlite3.connect('enterprise_itsm.db')
     cursor = conn.cursor()
     
-    # Core operational ticket queue table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS tickets (
             ticket_id TEXT PRIMARY KEY,
             customer_query TEXT,
-            assigned_department TEXT,
+            predicted_department TEXT,
             predicted_priority TEXT,
-            sentiment TEXT,
+            predicted_sentiment TEXT,
             predicted_action TEXT,
-            complexity_score INT,
             predicted_resolution_time REAL,
-            override_status TEXT DEFAULT 'NONE',
+            final_override_status TEXT,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Quality Assurance / Critic Agent log table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS critic_audits (
-            audit_id TEXT PRIMARY KEY,
-            ticket_id TEXT,
-            faithfulness_score INT,
-            relevance_score INT,
-            compliance_status TEXT,
-            reasoning_logs TEXT,
-            FOREIGN KEY(ticket_id) REFERENCES tickets(ticket_id)
         )
     ''')
     conn.commit()
     conn.close()
-    print("✓ Relational Database Infrastructure Initialized.")
+    print("✓ Local Relational Database Initialized.")
 
-# ==========================================
-# 2. INITIALIZE LOCAL VECTOR DATABASE (Chroma)
-# ==========================================
-def seed_vector_knowledge_base(csv_path):
-    """Converts static CSV text blocks into local semantic vector indices"""
-    # Initialize a persistent local vector client
-    chroma_client = chromadb.PersistentClient(path="./local_vector_db")
-    
-    # Using a standard default local embedding function
-    default_ef = embedding_functions.DefaultEmbeddingFunction()
-    
-    collection = chroma_client.get_or_create_collection(
-        name="troubleshooting_manuals", 
-        embedding_function=default_ef
-    )
-    
-    # Load your historical csv file to seed the database
-    df = pd.read_csv('../datasets/finaltraining_data.csv')
-    
-    ids = []
-    documents = []
-    metadatas = []
-    
-    for idx, row in df.iterrows():
-        unique_id = f"KB_DOC_{idx}"
-        ids.append(unique_id)
-        # Using the resolution steps text as the dense document
-        documents.append(str(row['Resolution_Steps']))
-        metadatas.append({"department": str(row['Assigned Department'])})
-        
-    # Bulk insert up to your local vector store limits
-    collection.upsert(ids=ids, documents=documents, metadatas=metadatas)
-    print(f"✓ Vector Knowledge Base Seeded with {len(documents)} records.")
-
-# ==========================================
-# 3. LIVE PIPELINE TRANSACTION WRITING
-# ==========================================
-def insert_live_ticket_metrics(ticket_data, audit_data):
-    """Executes a thread-safe transaction committing agent outputs to DB"""
+def commit_processed_ticket(ticket_payload):
+    """Inserts processed ticket telemetry safely using a secure rollback transaction."""
     conn = sqlite3.connect('enterprise_itsm.db')
     cursor = conn.cursor()
-    
     try:
-        # Commit quantitative and triage metadata fields
         cursor.execute('''
-            INSERT INTO tickets (ticket_id, customer_query, assigned_department, predicted_priority, sentiment, predicted_action, complexity_score, predicted_resolution_time, override_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO tickets (
+                ticket_id, customer_query, predicted_department, predicted_priority, 
+                predicted_sentiment, predicted_action, predicted_resolution_time, final_override_status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
-            ticket_data['id'], ticket_data['query'], ticket_data['dept'], 
-            ticket_data['priority'], ticket_data['sentiment'], ticket_data['action'],
-            ticket_data['complexity'], ticket_data['time_pred'], ticket_data['override']
+            ticket_payload['id'],
+            ticket_payload['query'],
+            ticket_payload['dept'],
+            ticket_payload['priority'],
+            ticket_payload['sentiment'],
+            ticket_payload['action'],
+            ticket_payload['time_pred'],
+            ticket_payload['override']
         ))
-        
-        # Commit qualitative Critic Agent metrics
-        cursor.execute('''
-            INSERT INTO critic_audits (audit_id, ticket_id, faithfulness_score, relevance_score, compliance_status, reasoning_logs)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (
-            str(uuid.uuid4()), ticket_data['id'], audit_data['faithfulness'],
-            audit_data['relevance'], audit_data['compliance'], audit_data['reasoning']
-        ))
-        
         conn.commit()
-        print(f"✓ Transaction successfully committed for Ticket: {ticket_data['id']}")
+        print(f"✓ Ticket {ticket_payload['id']} committed safely to database.")
     except sqlite3.Error as e:
         conn.rollback()
         print(f"⚠ Database transaction failed. Rollback executed: {e}")
     finally:
         conn.close()
 
+
+
+    # ==========================================
+# PHASE 2: NEW CHROMADB SEEDING FUNCTION
 # ==========================================
-# 4. RUN PIPELINE INITIALIZATION
-# ==========================================
-if __name__ == "__main__":
-    # 1. Build the tables
-    init_relational_db()
+def seed_vector_knowledge_base(csv_path):
+    """Ingests historical data into vector indices in chunks under SQLite limits."""
+    # 1. Initialize a local, persistent folder for your Vector DB
+    chroma_client = chromadb.PersistentClient(path="./local_vector_db")
     
-    # 2. Seed Vector DB (Ensure your training file is in the same folder)
-    try:
-        seed_vector_knowledge_base('ticket_test_dataset.csv')
-    except Exception as e:
-        print(f"Skipping vector seeding. Please check CSV filepath. Error: {e}")
+    # 2. Use the built-in local embedding engine
+    default_ef = embedding_functions.DefaultEmbeddingFunction()
+    
+    # 3. Create or fetch the collection slot
+    collection = chroma_client.get_or_create_collection(
+        name="troubleshooting_manuals", 
+        embedding_function=default_ef
+    )
+    
+    # 4. Read your core historical CSV
+    # print(f"Reading historical file: {csv_path}...")
+    df = pd.read_csv('../datasets/finaltraining_data.csv')
+    
+    # Map out parameters into pristine list structures
+    all_ids = [f"KB_DOC_{idx}" for idx in range(len(df))]
+    all_documents = df['Resolution_Steps'].astype(str).tolist()
+    all_metadatas = [{"department": str(dept)} for dept in df['Assigned Department']]
+    
+    # 5. Define a safe chunk size under the 5,461 variable limit
+    BATCH_SIZE = 5000 
+    total_records = len(all_documents)
+    
+    print(f"Starting vector ingestion loop: Processing {total_records} rows in batches of {BATCH_SIZE}...")
+    
+    # 6. Step through the array cleanly using chunked ranges
+    for i in range(0, total_records, BATCH_SIZE):
+        end_idx = min(i + BATCH_SIZE, total_records)
+        
+        # Push just this clean, bounded chunk to ChromaDB
+        collection.upsert(
+            ids=all_ids[i:end_idx],
+            documents=all_documents[i:end_idx],
+            metadatas=all_metadatas[i:end_idx]
+        )
+        print(f"✓ Successfully indexed rows: {i} to {end_idx}")
+
+    print("✓ Vector Knowledge Base Seeded and Safe from Batch Errors!")
+
+if __name__ == "__main__":
+    init_ticket_db()
