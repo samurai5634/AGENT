@@ -1,10 +1,19 @@
-from pydantic import BaseModel
+from pydantic import BaseModel,Field
 from crewai import Task
 import agent
 
 class ComplexOutput(BaseModel):
     score: float
     reason: str
+
+
+class FinalTicketBrief(BaseModel):
+    department: str = Field(description="The final routed department string")
+    priority: str = Field(description="The final priority level (High, Medium, Low)")
+    sentiment: str = Field(description="The extracted customer sentiment")
+    action_type: str = Field(description="The final operational action (Resolve, Escalate, Follow-Up)")
+    estimated_time: float = Field(description="The final adjusted resolution time in minutes")
+    override_status: str = Field(description="Active if an override was applied, otherwise Inactive")
 
 complexity_task = Task(
     description="Based on the summary provided, evaluate the technical complexity on a scale of 1-10."
@@ -46,23 +55,19 @@ triage_task = Task(
 )
 
 
+# Inside your tasks.py file, make sure your research_task includes the variable link:
+
 research_task = Task(
     description=(
         "Using the raw customer query: '{query}', search the historical database "
-        "using the KnowledgeBaseTool. You must identify the 3 most similar past cases. "
+        "using the KnowledgeBaseTool. Alternatively, analyze this pre-fetched nearest-neighbor "
+        "context from ChromaDB: '{kb_context}'. You must identify the 3 most similar past cases. "
         "Analyze the 'Resolution_Steps' from these cases to see if they can be applied "
-        "to the current situation. "
-        "\n\nFocus specifically on identifying technical commonalities—if past "
-        "similar queries resulted in an 'Escalation', note that for the Orchestrator."
+        "to the current situation."
     ),
-    expected_output="""A technical briefing containing:
-    1. A list of 3 similar historical queries.
-    2. The exact resolution steps used in those cases.
-    3. A synthesized recommendation on how to solve the current query based on history.""",
+    expected_output="""A technical briefing containing historical resolution steps and a recommendation.""",
     agent=agent.researcher,
-    # callback=app.update_sidebar_callback,
-    instructions = "Analyze the ticket and provide the final answer immediately. DO NOT attempt to refine the answer more than three times. If a tool returns an error, report the error as the final result.",
-    #  it helps the Orchestrator synthesize the final report.
+    instructions="Analyze the ticket and provide the final answer immediately."
 )
 
 override_task = Task(
@@ -114,6 +119,7 @@ orchestrator_task = Task(
     """,
     expected_output="A professional ticket brief containing: Summary, Final Action, Routing Dept, and Suggested Fix.",
     agent=agent.orchestrator_agent,
+    output_pydantic =FinalTicketBrief,
     instructions = "Analyze the ticket and provide the final answer immediately. DO NOT attempt to refine the answer more than three times. If a tool returns an error, report the error as the final result.",
     context=[summary_task, triage_task, override_task],
     # callback=app.update_sidebar_callback 
