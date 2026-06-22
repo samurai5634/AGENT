@@ -13,3 +13,4 @@ fastapi
 streamlit
 litellm[proxy]
 chromadb
+seaborn

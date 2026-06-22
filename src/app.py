@@ -1,7 +1,9 @@
 import streamlit as st
 from crewai import Crew, Process
-import agent  # Your agent.py
-import tasks  # Your tasks.py
+import agent  
+import tasks  
+import matplotlib.pyplot as plt
+import seaborn as sns
 import pandas as pd
 import time
 import sqlite3
@@ -34,22 +36,12 @@ ticket_df = load_live_queue_from_db()
 
 st.set_page_config(page_title="MAS Support System", layout="wide")
 
-# Sidebar for Status Tracking
+# Sidebar Status Engine layout Setup
 st.sidebar.title("🤖 Agent Pipeline Status")
-status_map = {
-    "Summarizer": st.sidebar.empty(),
-    "Triager": st.sidebar.empty(),
-    "Auditor": st.sidebar.empty(),
-    "Researcher": st.sidebar.empty(),
-    "Policy/SLA": st.sidebar.empty(),
-    "Orchestrator": st.sidebar.empty()
-}
+status_map = {key: st.sidebar.empty() for key in ["Summarizer", "Triager", "Auditor", "Researcher", "Policy/SLA", "Orchestrator"]}
+for key in status_map: status_map[key].write(f"⏳ {key}: Waiting")
 
-# Initialize sidebar text
-for key in status_map:
-    status_map[key].write(f"⏳ {key}: Waiting")
-
-st.title("Multi-Agent Customer Support & Risk Control Center")
+st.title("Multi-Agent Customer Support & Production Center")
 st.markdown("---")
 
 
@@ -64,10 +56,7 @@ with tab_processing:
     # User Input
     user_query = st.text_area("Enter Customer Support Ticket:", placeholder="e.g., My payment was deducted but the order status is still 'Failed'...")
 
-    col1, col2 = st.columns([1, 5])
-    submit = col1.button("Analyze Ticket")
-
-    if submit and user_query:
+    if st.button("Analyze Ticket") and user_query:
         st.markdown("---")
         
         # STABLE AUTOMATED EXECUTION STATE (S_execute)
@@ -177,18 +166,28 @@ with tab_processing:
 
 # Static Weight Analysis Display Panel
 with tab_analytics:
-    st.subheader("🤖 Model Diagnostics & Predictive Feature Weights")
-    st.write("This tab visualizes the statistical evaluation and static weight analysis calculated by your parallel Scikit-Learn regression pipelines.")
+    st.subheader("🤖 Model Diagnostics & Pipeline Weights")
+    st.write("Performance metrics computed directly from your trained `.pkl` arrays.")
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric(label="Regression Accuracy ($R^2$ Score)", value=metrics["r2"])
+    col2.metric(label="Triage Classifier Accuracy", value=metrics["clf_acc"])
+    col3.metric(label="Mean Absolute Error (MAE)", value=metrics["mae"])
+
+    st.markdown("---")
     
-    # Render Feature Importance Chart
-    feature_importance_data = pd.DataFrame({
-        'ITSM Metric Layer': ['Queue Congestion Depth', 'Initial Ticket Priority Tier', 'Local Ollama CPU Load', 'Unstructured Text Character Count'],
-        'Mathematical Weight Importance': [0.45, 0.32, 0.15, 0.08]
-    }).set_index('ITSM Metric Layer')
+    # Scatter Chart Plot mapping true versus estimated values
+    st.write("### 📈 Time Estimation Mapping: Model Predictions vs Actual Resolution Times")
+    df_eval = metrics["df_eval"].sample(150, random_state=42)
     
-    st.bar_chart(feature_importance_data)
-    st.caption("Figure 2. Static weight distributions across Random Forest regression nodes determining estimated processing latency ($T_{proj}$).")
-    
+    fig, ax = plt.subplots(figsize=(10, 3.5))
+    ax.scatter(df_eval['Actual_Resolution_Time'] if 'Actual_Resolution_Time' in df_eval.columns else df_eval.index[:150], engine.y_reg_pred[:150], alpha=0.6, color="#1f77b4", edgecolors="k", label="Actual Tickets")
+    ax.plot([0, 300], [0, 300], 'r--', lw=2, label="Optimal Calibration line ($Y=X$)")
+    ax.set_xlabel("Actual Resolution Time (Minutes)")
+    ax.set_ylabel("Predicted Model Time (Minutes)")
+    ax.legend()
+    st.pyplot(fig)
+
     st.markdown("---")
     st.subheader("📈 Historical SLA Control Performance Metrics")
     

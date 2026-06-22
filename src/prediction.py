@@ -83,7 +83,7 @@ TARGET_REG = 'Resolution_Time_Actual'
 
 # Prepare the data
 X_reg = df[REGRESSION_FEATURES]
-Y_reg = df[TARGET_REG]
+Y_reg = df[TARGET_REG] 
 
 # Define preprocessor: Scale numerical
 preprocessor = ColumnTransformer(
