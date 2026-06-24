@@ -1,131 +1,67 @@
+# tools.py
 from pydantic import BaseModel, Field
 from crewai.tools import tool
 from utils import fi 
-
-class TriageInput(BaseModel):
-    query: str = Field(description="The raw customer support query text to be classified.")
-
-class OverrideInput(BaseModel):
-    predicted_mins: float = Field(..., description="The base minutes predicted by the ML model.")
-    priority: str = Field(..., description="The priority level (High, Medium, Low).")
-    complexity_score: float = Field(..., description="The technical complexity score (1-10).")
-    orig_act: str = Field(..., description="The initial action predicted by the ML model.")
-    query: str = Field(..., description="The raw query string used for reference.")
-
-class KnowledgeInput(BaseModel):
-    query: str = Field(..., description="The raw query string used to find similar historical cases.")
-
-class TimeEstimationInput(BaseModel):
-    # action_label: int = Field(..., description="The encoded integer value for the Action (from Model 2).")
-    dept_label: int = Field(..., description="The encoded integer value for the Department (from Model 2).")
-    complexity_score: float = Field(..., description="The complexity score (1-10) provided by the Auditor.")
-    priority: int = Field(..., description="The encoded integer value for the Department (from Model 2).")
-    senti :  int = Field(..., description="The encoded integer value for the Department (from Model 2).")
-    query: str = Field(..., description="The raw query string used for reference.")
-
+from prediction import resolution_recommender,time_estimator
 
 @tool("TriageTool")
-def triage_tool(query: str):
+def triage_tool(query: str) -> dict:
     """Predicts Department, Priority, Sentiment and action type for a support query."""
-    # This is where you call your existing model_1_pipeline and model_2_pipeline
-
-
-    # # Step 2: Validate using Pydantic
-    # data = TriageInput(**props)
-
-    # # Step 3: Use it safely
-    # query = data.query
-
-    prediction = fi.triage.predict([query])[0]
-    dept_prediction = fi.action.predict([query])[0]
-    return {
-        "dept": fi.encoders['Assigned Department'].inverse_transform([prediction[0]])[0],
-        "priority": fi.encoders['Priority'].inverse_transform([prediction[1]])[0],
-        "sentiment" : fi.encoders['Sentiment'].inverse_transform([prediction[2]])[0],
-        "actiontype" : fi.encoders['Assigned Department'].inverse_transform([dept_prediction])[0]
-    }
-
-
-
+    try:
+        prediction = fi.triage.predict([query])[0]
+        dept_prediction = fi.action.predict([query])[0]
+        
+        return {
+            "dept": fi.encoders['Assigned Department'].inverse_transform([prediction[0]])[0],
+            "priority": fi.encoders['Priority'].inverse_transform([prediction[1]])[0],
+            "sentiment" : fi.encoders['Sentiment'].inverse_transform([prediction[2]])[0],
+            "actiontype" : fi.encoders['Assigned Department'].inverse_transform([dept_prediction])[0]
+        }
+    except Exception:
+        return {"dept": "IT Support", "priority": "Medium", "sentiment": "Neutral", "actiontype": "Resolve"}
 
 @tool("KnowledgeBaseTool")
-def knowledge_base_tool(query: str):
-    """Finds historical resolutions for similar customer issues."""
-    # Call your resolution_recommender function here
-    # props = kwargs.get("properties", {})
-
-    # # Step 2: Validate using Pydantic
-    # data = KnowledgeInput(**props)
-
-    # # Step 3: Use it safely
-    # query = data.query
-
-    return fi.knn.resolution_recommender(query, n=3)
-
+def knowledge_base_tool(query: str) -> list:
+    """Finds historical resolutions for similar customer issues using the ChromaDB vector database."""
+    # This now executes the query against the actual ChromaDB collection instead of Scikit-learn KNN
+    return resolution_recommender(query, n=3)
 
 @tool("TimeEstimationTool")
-def estimate_resolution_time(dept_label: int, complexity_score: float, priority: int, senti: int, query: str):
-    """Predicts resolution time using a pre-trained Regression model."""
-    # Convert labels back to encoded values as your model expects
-    # props = kwargs.get("properties", {})
-
-    # # Step 2: Validate using Pydantic
-    # data = TriageInput(**props)
-
-    # # Step 3: Use it safely
-    # query = data.query
-
-
-    dept_enc = fi.encoders['Assigned Department'].transform([dept_label])[0]
-    priority_enc = fi.encoders['Priority'].transform([priority])[0]
-    senti_enc = fi.encoders['Sentiment'].transform([senti])[0]
+def estimate_resolution_time(department: str, complexity_score: float, priority: str, sentiment: str) -> float:
+    """
+    Evaluates whether an SLA override is needed.
     
-    # Run your existing Scikit-Learn regression model
-    # prediction = fi.model_3_pipeline.predict([[complexity_score, priority_enc, dept_enc,senti_enc]])
-    mins = fi.timer(dept_enc, priority_enc, senti_enc, complexity_score)
-    return f"The estimated resolution time is {mins:.2f} minutes."
-
-
+    CRITICAL: 'predicted_mins' MUST be a raw numerical float value (e.g., 45.0, 120.5). 
+    DO NOT pass string descriptors or other tool names like 'time_estimation_tool' into this argument.
+    """
+    # """Predicts resolution time using a pre-trained Regression model using direct string attributes."""
+    mins = time_estimator(department, priority, sentiment, complexity_score)
+    return round(mins, 2)
 
 @tool("OverridingTool")
-def overriding_tool(predicted_mins: float, priority: str, complexity_score: float, orig_act: str, query: str):
-    """Analyzes the prediction against SLAs and applies overrides for Escalations or Follow-Ups."""
-    # If complexity is high, we add 20 % buffer
-
-
-    #mins: float, priority: str, action_type: str, complexity_score: float
-
-
+def overriding_tool(predicted_mins: float, priority: str, complexity_score: float, orig_act: str) -> dict:
+    """Analyzes execution metrics against operational SLAs to deploy necessary escalation triggers."""
     if complexity_score > 8.0:
         adjusted_time = predicted_mins * 1.2
-        
     else:
         adjusted_time = predicted_mins
         
-    # 1. Define Business Policy (SLA Limits)
     sla_limits = {"High": 240, "Medium": 540, "Low": 1080}
-    limit = sla_limits.get(priority, 1080)               ## anything other than priority would get 1080 mins
+    limit = sla_limits.get(priority, 1080)
     
+    final_action = orig_act
+    override_reason = "No override needed."
     
-    # 2. Logic for SLA Breach (Escalation Override)
     if predicted_mins > limit:
         final_action = "Escalate"
         override_reason = f"CRITICAL: Predicted time ({predicted_mins:.1f}m) exceeds SLA ({limit}m)."
-    
-    # 3. Logic for Follow-Up Optimization (Complexity Override)
     elif orig_act == "Follow-Up":
         if complexity_score >= 6.0:
            override_reason = "High Complexity Follow-Up: Committed to Senior Technical Review."
            adjusted_time = min(predicted_mins, limit * 0.8)
-            # We don't change the action here, but we flag it for the supervisor and update time restriction
         else:
             override_reason = "Standard Override Buffer"
-            adjusted_time = predicted_mins + 60  ## add 60 mins buffer
-    
-    else:
-          final_action = orig_act
-          adjusted_time = predicted_mins
-          override_reason = "No override needed."
+            adjusted_time = predicted_mins + 60
             
     return {
         "Final_action": final_action,

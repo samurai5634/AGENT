@@ -1,4 +1,3 @@
-
 from database import seed_vector_knowledge_base
 import chromadb
 

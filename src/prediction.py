@@ -65,6 +65,9 @@ Y_rec = df['Resolution_Steps']
 tfidf_rec = TfidfVectorizer(stop_words='english', max_features=5000)
 X_rec_vectorized = tfidf_rec.fit_transform(X_rec)
 
+
+joblib.dump(tfidf_rec, 'models/tfidf_rec.pkl')
+
 # 2. Train a Nearest Neighbors model on the vectorized KB
 # 'metric=cosine' makes it a Content-Based Recommender using cosine similarity
 nn_model = NearestNeighbors(n_neighbors=5, metric='cosine', algorithm='brute')
@@ -137,6 +140,7 @@ evaluate_static_layer(Y1_test,model_1_pipeline.predict(X_test),Y2_reg_test,model
 
 #### Functions 
 
+
 def resolution_recommender(query, n=3):
     """Predicts the top N most similar resolution steps."""
     query_vectorized = tfidf_rec.transform([query])
@@ -151,9 +155,6 @@ def resolution_recommender(query, n=3):
             'Recommended_Steps': df.iloc[index]['Resolution_Steps']
         })
     return recommendations
-
-
-
 
 
 

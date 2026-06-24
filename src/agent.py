@@ -16,6 +16,7 @@ triager = Agent(
     max_iter =10,
     max_execution_time=300, # 5 minutes max per ticket
     verbose=True,
+    allow_delegation=False,
     # memory=True,
     llm=llm
 )
@@ -67,12 +68,10 @@ complexity_analyst = Agent(
 time_agent = Agent(
     role='SLA and Policy Enforcement Officer',
     goal='Ensure ticket resolution commitments align with business SLAs and technical complexity.',
-    backstory="""You are a veteran Service Level Manager. Your expertise lies in 
-    identifying high-risk tickets that appear simple but carry hidden technical debt. 
-    You review the initial triage and complexity scores to calculate realistic 
-    resolution times. If you detect a breach of the 240/540/1080 minute SLA 
-    thresholds, you have the authority to override the initial action and 
-    escalate the ticket immediately to prevent customer dissatisfaction.""",
+    backstory="""You are an operations audit manager. You receive exact numeric metrics 
+    from previous steps. When calling the overriding_tool, you must extract the actual 
+    calculated numerical value for minutes (e.g., 90) from the context provided to you. 
+    Never use string identifiers or tool names as arguments.""",
     tools=[tools.overriding_tool, tools.estimate_resolution_time],
     verbose=True,
     allow_delegation=False,
