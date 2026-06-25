@@ -54,7 +54,7 @@ research_task = Task(
     2. The exact resolution steps used in those cases.
     3. A synthesized recommendation on how to solve the current query based on history.""",
     agent=agent.researcher 
-    #  it helps the Orchestrator synthesize the final report.
+    
 )
 
 override_task = Task(
@@ -108,3 +108,8 @@ orchestrator_task = Task(
 )
 
 
+time_prediction_task = Task(
+    description="""Analyze the ticket. First, identify the predicted department from the previous triage step. 
+    Then, use the TimeEstimationTool by providing all required arguments: department, complexity_score, priority, and sentiment.""",
+    expected_output="An estimated resolution time based on tool output.",
+    agent=agent.time_agent)

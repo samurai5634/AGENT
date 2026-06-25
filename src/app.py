@@ -9,6 +9,9 @@ import uuid  # Imported to generate unique ticket IDs for the database
 # Import your database functions
 from database import init_ticket_db, commit_processed_ticket
 
+# Import the critique execution pipeline helper
+import critic
+
 st.set_page_config(page_title="MAS Support System", layout="wide")
 
 # Initialize the local relational database on application startup
@@ -18,7 +21,7 @@ def setup_database():
 
 setup_database()
 
-# Sidebar for Status Tracking
+# Sidebar for Status Tracking (Added Critic to match execution pipeline)
 st.sidebar.title("Agent Pipeline Status")
 status_map = {
     "Summarizer": st.sidebar.empty(),
@@ -26,7 +29,8 @@ status_map = {
     "Auditor": st.sidebar.empty(),
     "Researcher": st.sidebar.empty(),
     "Policy/SLA": st.sidebar.empty(),
-    "Orchestrator": st.sidebar.empty()
+    "Orchestrator": st.sidebar.empty(),
+    "Quality Critic": st.sidebar.empty()  
 }
 
 # Initialize sidebar text
@@ -43,7 +47,7 @@ col1, col2 = st.columns([1, 5])
 submit = col1.button("Analyze Ticket")
 
 if submit and user_query:
-    # 1. Update Sidebar to show we've started
+    # 1. Update Sidebar to show we've started the sequential processing
     status_map["Summarizer"].write(" ⏳ Summarizer: Working...")
 
     # 2. Setup the Crew
@@ -68,39 +72,63 @@ if submit and user_query:
         verbose=True
     )
 
-    # 3. Execution
+    # 3. Core Crew Execution
     with st.status("Agents are collaborating...", expanded=True) as status:
-        # CrewAI automatically injects user_query into any task with {query}
         final_report = support_crew.kickoff(inputs={'query': user_query})
-        status.update(label="Analysis Complete!", state="complete")
+        status.update(label="Crew Orchestration Complete!", state="complete")
 
-    # 4. Final Display
+    # Update primary crew steps to completed in Sidebar
+    for key in ["Summarizer", "Triager", "Auditor", "Researcher", "Policy/SLA", "Orchestrator"]:
+        status_map[key].write(f" ✅ {key}: Completed")
+
+    # 4. Neuro-Symbolic Validation Layer (critic.py)
+    status_map["Quality Critic"].write(" ⏳ Quality Critic: Auditing Resolution...")
+    
+    # Extract structured data from Pydantic output to feed into the Critic model
+    structured_data = getattr(final_report, "pydantic", None)
+    
+    predicted_dept = getattr(structured_data, 'predicted_department', 'Unknown')
+    proposed_res = getattr(final_report, 'raw', str(final_report))
+    # Safely extracting internal context or using fallback snippet for evaluation grounding
+    reference_context = getattr(structured_data, 'extracted_context', 'Internal Reference Manual/KB Policy')
+
+    with st.spinner("System Quality Auditor verifying faithfulness & relevance..."):
+        audit_results = critic.execute_live_audit(
+            query=user_query,
+            ml_pred=predicted_dept,
+            agent_res=proposed_res,
+            context=reference_context
+        )
+    
+    status_map["Quality Critic"].write(" ✅ Quality Critic: Audit Completed")
+
+    # 5. Final UI Display
     st.subheader("Final Orchestrated Brief")
     st.markdown(final_report)
 
-    # Update Sidebar to Finished
-    for key in status_map:
-        status_map[key].write(f" ✅ {key}: Completed")
+    # Display real-time critique metrics in an expandable UI component
+    with st.expander("🛡️ System Quality Audit Telemetry", expanded=True):
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Faithfulness Score", f"{audit_results.get('faithfulness', 0)}/10")
+        m2.metric("Relevance Score", f"{audit_results.get('relevance', 0)}/10")
+        m3.metric("Department Compliance", audit_results.get('compliance', 'N/A'))
+        st.caption(f"**Auditor Reasoning:** {audit_results.get('reasoning', 'No rationale provided.')}")
 
-    # 5. Database Integration: Construct payload and commit data
+    # 6. Database Integration: Construct payload with live critic data and commit
     try:
-        # Check if the final task or crew returned structured output (Pydantic), 
-        # otherwise fallback safely to string extractions or placeholders.
-        structured_data = getattr(final_report, "pydantic", None)
-        
         ticket_payload = {
             'id': str(uuid.uuid4())[:8],  # Generate a short unique ID for the ticket
             'query': user_query,
-            'dept': getattr(structured_data, 'predicted_department', 'Unknown'),
+            'dept': predicted_dept,
             'priority': getattr(structured_data, 'predicted_priority', 'Normal'),
             'sentiment': getattr(structured_data, 'predicted_sentiment', 'Neutral'),
             'action': getattr(structured_data, 'predicted_action', 'Review Required'),
             'complexity': float(getattr(structured_data, 'complexity_score', 0.0)),
             'time_pred': float(getattr(structured_data, 'predicted_resolution_time', 0.0)),
             'override': getattr(structured_data, 'final_override_status', 'No Override'),
-            'faithfulness': str(getattr(structured_data, 'faithfulness_score', 'N/A')),
-            'relevance': str(getattr(structured_data, 'relevance_score', 'N/A')),
-            'audit_status': getattr(structured_data, 'audit_status', 'Logged')
+            'faithfulness': str(audit_results.get('faithfulness', 'N/A')),
+            'relevance': str(audit_results.get('relevance', 'N/A')),
+            'audit_status': f"Audited - Compliance: {audit_results.get('compliance', 'Logged')}"
         }
         
         # Safely insert the telemetry payload into your enterprise_itsm.db
